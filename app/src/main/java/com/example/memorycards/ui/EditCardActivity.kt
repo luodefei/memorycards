@@ -1,6 +1,8 @@
 package com.example.memorycards.ui
 
 import android.os.Bundle
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.memorycards.data.DatabaseHelper
@@ -13,6 +15,7 @@ class EditCardActivity : AppCompatActivity() {
         const val EXTRA_CARD_ID = "card_id"
         const val EXTRA_CARD_FRONT = "card_front"
         const val EXTRA_CARD_BACK = "card_back"
+        const val EXTRA_CARD_CATEGORY = "card_category"
     }
 
     private lateinit var binding: ActivityEditCardBinding
@@ -26,12 +29,20 @@ class EditCardActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
 
-        // Check if editing existing card
+        // 设置已有分类下拉提示
+        val categories = dbHelper.getAllCategories()
+        if (categories.isNotEmpty()) {
+            val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, categories)
+            binding.etCategory.setAdapter(adapter)
+            binding.etCategory.threshold = 1
+        }
+
         editingCardId = intent.getLongExtra(EXTRA_CARD_ID, -1)
         if (editingCardId != -1L) {
             binding.toolbar.title = "编辑卡片"
             binding.etFront.setText(intent.getStringExtra(EXTRA_CARD_FRONT))
             binding.etBack.setText(intent.getStringExtra(EXTRA_CARD_BACK))
+            binding.etCategory.setText(intent.getStringExtra(EXTRA_CARD_CATEGORY) ?: "")
         } else {
             binding.toolbar.title = "添加卡片"
         }
@@ -48,6 +59,7 @@ class EditCardActivity : AppCompatActivity() {
     private fun saveCard() {
         val front = binding.etFront.text.toString().trim()
         val back = binding.etBack.text.toString().trim()
+        val category = binding.etCategory.text.toString().trim()
 
         if (front.isEmpty()) {
             binding.etFront.error = "请输入正面内容"
@@ -59,11 +71,11 @@ class EditCardActivity : AppCompatActivity() {
         }
 
         if (editingCardId != -1L) {
-            val card = Card(id = editingCardId, front = front, back = back)
+            val card = Card(id = editingCardId, front = front, back = back, category = category)
             dbHelper.updateCard(card)
             Toast.makeText(this, "卡片已更新", Toast.LENGTH_SHORT).show()
         } else {
-            val card = Card(front = front, back = back)
+            val card = Card(front = front, back = back, category = category)
             dbHelper.insertCard(card)
             Toast.makeText(this, "卡片已添加", Toast.LENGTH_SHORT).show()
         }

@@ -15,14 +15,15 @@ class ReviewActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "ReviewActivity"
+        const val EXTRA_CATEGORY = "review_category"
     }
 
     private lateinit var dbHelper: DatabaseHelper
     private var reviewList: List<Card> = emptyList()
     private var currentIndex = 0
     private var isShowingBack = false
+    private var reviewCategory: String = ""
 
-    // Views
     private lateinit var cardLabel: android.widget.TextView
     private lateinit var cardContent: android.widget.TextView
     private lateinit var loadedCount: android.widget.TextView
@@ -35,10 +36,13 @@ class ReviewActivity : AppCompatActivity() {
         setContentView(R.layout.activity_review)
 
         dbHelper = DatabaseHelper(this)
+        reviewCategory = intent.getStringExtra(EXTRA_CATEGORY) ?: ""
 
-        // Bind views manually
         val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
+        if (reviewCategory.isNotEmpty()) {
+            toolbar.title = "复习 — $reviewCategory"
+        }
 
         cardLabel = findViewById(R.id.tvCardLabel)
         cardContent = findViewById(R.id.tvCardContent)
@@ -55,13 +59,13 @@ class ReviewActivity : AppCompatActivity() {
     }
 
     private fun loadReviewCards() {
-        reviewList = dbHelper.getCardsForReview()
-        Log.d(TAG, "getCardsForReview returned ${reviewList.size} cards")
+        reviewList = dbHelper.getCardsForReview(categoryFilter = reviewCategory)
+        Log.d(TAG, "getCardsForReview(cat=$reviewCategory) returned ${reviewList.size} cards")
 
         if (reviewList.isEmpty()) {
-            // Fallback: show ALL cards
-            reviewList = dbHelper.getAllCards()
-            Log.d(TAG, "getAllCards returned ${reviewList.size} cards")
+            // Fallback: show all cards in this category
+            reviewList = dbHelper.getAllCards(categoryFilter = reviewCategory)
+            Log.d(TAG, "getAllCards(cat=$reviewCategory) returned ${reviewList.size} cards")
         }
 
         if (reviewList.isEmpty()) {
@@ -105,13 +109,11 @@ class ReviewActivity : AppCompatActivity() {
         flipCard.startAnimation(anim)
 
         if (isShowingBack) {
-            // Flip to front
             cardLabel.text = "📖 正面  |  ${currentIndex + 1} / ${reviewList.size}"
             cardContent.text = card.front
             cardContent.setTextColor(getColor(R.color.black))
             flipCard.setCardBackgroundColor(getColor(R.color.card_front_bg))
         } else {
-            // Flip to back
             cardLabel.text = "📝 背面  |  ${currentIndex + 1} / ${reviewList.size}"
             cardContent.text = card.back
             cardContent.setTextColor(getColor(R.color.black))

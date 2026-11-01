@@ -4,6 +4,8 @@
     <string name="start_review">开始复习</string>
     <string name="front">正面</string>
     <string name="back">背面</string>
+    <string name="category">知识分类</string>
+    <string name="category_hint">如：JVM、集合、并发、算法…</string>
     <string name="save">保存</string>
     <string name="delete">删除</string>
     <string name="edit">编辑</string>
@@ -16,8 +18,8 @@
     <string name="card_front_hint">输入问题/关键词</string>
     <string name="card_back_hint">输入答案/内容</string>
     <string name="batch_import">批量导入</string>
-    <string name="batch_import_desc">每行一张卡片，用 | 分隔正反面</string>
-    <string name="batch_import_hint">JVM 是什么？|Java Virtual Machine\nGC 全称？|Garbage Collection\nOOM 是什么？|OutOfMemoryError</string>
+    <string name="batch_import_desc">每行一张卡片，用 | 分隔 正面|背面|分类（分类可选）</string>
+    <string name="batch_import_hint">JVM 是什么？|Java Virtual Machine|JVM\nGC 全称？|Garbage Collection|JVM\nOOM 是什么？|OutOfMemoryError|JVM</string>
     <string name="import_btn">导入</string>
     <string name="import_empty">请先输入卡片内容</string>
     <string name="import_success">成功导入 %d 张卡片</string>

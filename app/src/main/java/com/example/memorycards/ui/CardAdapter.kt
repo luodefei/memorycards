@@ -2,9 +2,11 @@ package com.example.memorycards.ui
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.memorycards.R
 import com.example.memorycards.databinding.ItemCardBinding
 import com.example.memorycards.model.Card
 
@@ -29,6 +31,13 @@ class CardAdapter(
             binding.tvFront.text = card.front
             binding.tvBack.text = card.back
             binding.tvBox.text = "箱 ${card.box}/5"
+
+            if (card.category.isNotEmpty()) {
+                binding.tvCategory.visibility = android.view.View.VISIBLE
+                binding.tvCategory.text = card.category
+            } else {
+                binding.tvCategory.visibility = android.view.View.GONE
+            }
 
             binding.btnEdit.setOnClickListener {
                 onEditClick(card)
