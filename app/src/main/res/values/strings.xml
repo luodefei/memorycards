@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">记忆卡片</string>
+    <string name="add_card">添加卡片</string>
+    <string name="start_review">开始复习</string>
+    <string name="front">正面</string>
+    <string name="back">背面</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="show_answer">显示答案</string>
+    <string name="forgot">忘记了</string>
+    <string name="remembered">记住了</string>
+    <string name="no_cards">还没有卡片，点击下方按钮添加</string>
+    <string name="review_complete">复习完成！</string>
+    <string name="confirm_delete">确定要删除这张卡片吗？</string>
+    <string name="card_front_hint">输入问题/关键词</string>
+    <string name="card_back_hint">输入答案/内容</string>
+</resources>
