@@ -1,5 +1,6 @@
 package com.example.memorycards.ui
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
@@ -11,8 +12,11 @@ import com.example.memorycards.databinding.ItemCardBinding
 import com.example.memorycards.model.Card
 
 class CardAdapter(
+    private val activity: MainActivity,
     private val onEditClick: (Card) -> Unit,
-    private val onDeleteClick: (Card) -> Unit
+    private val onDeleteClick: (Card) -> Unit,
+    private val onLongClick: (Card) -> Unit,
+    private val onClick: (Card) -> Unit
 ) : ListAdapter<Card, CardAdapter.CardViewHolder>(DiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CardViewHolder {
@@ -32,30 +36,44 @@ class CardAdapter(
             binding.tvBack.text = card.back
             binding.tvBox.text = "箱 ${card.box}/5"
 
-            if (card.category.isNotEmpty()) {
+            // Checkbox for selection mode
+            if (activity.isSelectionMode()) {
+                binding.checkbox.visibility = android.view.View.VISIBLE
+                binding.checkbox.isChecked = activity.isCardSelected(card.id)
+                binding.btnEdit.isEnabled = false
+                binding.btnDelete.isEnabled = false
+            } else {
+                binding.checkbox.visibility = android.view.View.GONE
+                binding.btnEdit.isEnabled = true
+                binding.btnDelete.isEnabled = true
+            }
+
+            if (card.categoryPath.isNotEmpty()) {
                 binding.tvCategory.visibility = android.view.View.VISIBLE
-                binding.tvCategory.text = card.category
+                binding.tvCategory.text = card.categoryPath
             } else {
                 binding.tvCategory.visibility = android.view.View.GONE
             }
 
-            binding.btnEdit.setOnClickListener {
-                onEditClick(card)
+            if (activity.isCardSelected(card.id)) {
+                binding.root.setCardBackgroundColor(ContextCompat.getColor(binding.root.context, R.color.selected_card_bg))
+            } else {
+                binding.root.setCardBackgroundColor(ContextCompat.getColor(binding.root.context, R.color.white))
             }
 
-            binding.btnDelete.setOnClickListener {
-                onDeleteClick(card)
+            binding.root.setOnClickListener { onClick(card) }
+            binding.root.setOnLongClickListener {
+                onLongClick(card)
+                true
             }
+
+            binding.btnEdit.setOnClickListener { onEditClick(card) }
+            binding.btnDelete.setOnClickListener { onDeleteClick(card) }
         }
     }
 
     class DiffCallback : DiffUtil.ItemCallback<Card>() {
-        override fun areItemsTheSame(oldItem: Card, newItem: Card): Boolean {
-            return oldItem.id == newItem.id
-        }
-
-        override fun areContentsTheSame(oldItem: Card, newItem: Card): Boolean {
-            return oldItem == newItem
-        }
+        override fun areItemsTheSame(oldItem: Card, newItem: Card) = oldItem.id == newItem.id
+        override fun areContentsTheSame(oldItem: Card, newItem: Card) = oldItem == newItem
     }
 }

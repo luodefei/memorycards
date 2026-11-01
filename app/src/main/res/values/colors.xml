@@ -10,4 +10,6 @@
     <color name="card_back_bg">#FFE8F5E9</color>
     <color name="forgot_btn">#FFE53935</color>
     <color name="remember_btn">#FF43A047</color>
+    <color name="selected_node_bg">#EDE7F6</color>
+    <color name="selected_card_bg">#F3E5F5</color>
 </resources>

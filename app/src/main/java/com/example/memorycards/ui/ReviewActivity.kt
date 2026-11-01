@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.animation.AnimationUtils
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import com.example.memorycards.R
@@ -15,14 +14,16 @@ class ReviewActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "ReviewActivity"
-        const val EXTRA_CATEGORY = "review_category"
+        const val EXTRA_CATEGORY_ID = "review_category_id"
+        const val EXTRA_INCLUDE_CHILDREN = "include_children"
     }
 
     private lateinit var dbHelper: DatabaseHelper
     private var reviewList: List<Card> = emptyList()
     private var currentIndex = 0
     private var isShowingBack = false
-    private var reviewCategory: String = ""
+    private var reviewCategoryId: Long? = null
+    private var includeChildren = false
 
     private lateinit var cardLabel: android.widget.TextView
     private lateinit var cardContent: android.widget.TextView
@@ -36,13 +37,11 @@ class ReviewActivity : AppCompatActivity() {
         setContentView(R.layout.activity_review)
 
         dbHelper = DatabaseHelper(this)
-        reviewCategory = intent.getStringExtra(EXTRA_CATEGORY) ?: ""
+        reviewCategoryId = if (intent.hasExtra(EXTRA_CATEGORY_ID)) intent.getLongExtra(EXTRA_CATEGORY_ID, -1).let { if (it == -1L) null else it } else null
+        includeChildren = intent.getBooleanExtra(EXTRA_INCLUDE_CHILDREN, false)
 
         val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
-        if (reviewCategory.isNotEmpty()) {
-            toolbar.title = "复习 — $reviewCategory"
-        }
 
         cardLabel = findViewById(R.id.tvCardLabel)
         cardContent = findViewById(R.id.tvCardContent)
@@ -59,13 +58,12 @@ class ReviewActivity : AppCompatActivity() {
     }
 
     private fun loadReviewCards() {
-        reviewList = dbHelper.getCardsForReview(categoryFilter = reviewCategory)
-        Log.d(TAG, "getCardsForReview(cat=$reviewCategory) returned ${reviewList.size} cards")
+        reviewList = dbHelper.getCardsForReview(categoryId = reviewCategoryId, includeChildren = includeChildren)
+        Log.d(TAG, "getCardsForReview returned ${reviewList.size} cards")
 
         if (reviewList.isEmpty()) {
-            // Fallback: show all cards in this category
-            reviewList = dbHelper.getAllCards(categoryFilter = reviewCategory)
-            Log.d(TAG, "getAllCards(cat=$reviewCategory) returned ${reviewList.size} cards")
+            reviewList = dbHelper.getAllCards(categoryId = reviewCategoryId, includeChildren = includeChildren)
+            Log.d(TAG, "getAllCards returned ${reviewList.size} cards")
         }
 
         if (reviewList.isEmpty()) {
@@ -79,11 +77,7 @@ class ReviewActivity : AppCompatActivity() {
     }
 
     private fun showCard() {
-        if (currentIndex >= reviewList.size) {
-            showComplete()
-            return
-        }
-
+        if (currentIndex >= reviewList.size) { showComplete(); return }
         isShowingBack = false
         val card = reviewList[currentIndex]
         val progressText = "${currentIndex + 1} / ${reviewList.size}"
@@ -97,13 +91,10 @@ class ReviewActivity : AppCompatActivity() {
         btnRemember.isEnabled = true
         btnForgot.visibility = View.VISIBLE
         btnRemember.visibility = View.VISIBLE
-
-        Log.d(TAG, "Showing card ${currentIndex}: front=${card.front}")
     }
 
     private fun flipCard() {
         if (reviewList.isEmpty() || currentIndex >= reviewList.size) return
-
         val card = reviewList[currentIndex]
         val anim = AnimationUtils.loadAnimation(this, R.anim.flip_vertical)
         flipCard.startAnimation(anim)
@@ -124,16 +115,10 @@ class ReviewActivity : AppCompatActivity() {
 
     private fun onAnswer(remembered: Boolean) {
         if (reviewList.isEmpty() || currentIndex >= reviewList.size) return
-
         val card = reviewList[currentIndex]
         dbHelper.updateCardReview(card.id, remembered)
-
         currentIndex++
-        if (currentIndex >= reviewList.size) {
-            showComplete()
-        } else {
-            showCard()
-        }
+        if (currentIndex >= reviewList.size) showComplete() else showCard()
     }
 
     private fun showComplete() {

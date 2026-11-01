@@ -12,14 +12,14 @@
     <string name="show_answer">显示答案</string>
     <string name="forgot">忘记了</string>
     <string name="remembered">记住了</string>
-    <string name="no_cards">还没有卡片，点击下方按钮添加</string>
+    <string name="no_cards">还没有卡片，点击左下角按钮添加</string>
     <string name="review_complete">复习完成！</string>
     <string name="confirm_delete">确定要删除这张卡片吗？</string>
     <string name="card_front_hint">输入问题/关键词</string>
     <string name="card_back_hint">输入答案/内容</string>
     <string name="batch_import">批量导入</string>
-    <string name="batch_import_desc">每行一张卡片，用 | 分隔 正面|背面|分类（分类可选）</string>
-    <string name="batch_import_hint">JVM 是什么？|Java Virtual Machine|JVM\nGC 全称？|Garbage Collection|JVM\nOOM 是什么？|OutOfMemoryError|JVM</string>
+    <string name="batch_import_desc">每行一张卡片，格式：正面|背面|分类路径（分类可选，用/分隔层级）</string>
+    <string name="batch_import_hint">JVM 是什么？|Java Virtual Machine|JVM\nGC 全称？|Garbage Collection|JVM\nOOM 是什么？|OutOfMemoryError|JVM/内存</string>
     <string name="import_btn">导入</string>
     <string name="import_empty">请先输入卡片内容</string>
     <string name="import_success">成功导入 %d 张卡片</string>
