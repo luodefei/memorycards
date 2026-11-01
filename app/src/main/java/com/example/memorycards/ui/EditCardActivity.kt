@@ -72,7 +72,7 @@ class EditCardActivity : AppCompatActivity() {
                 textSize = 15f
                 setPadding(16, 14, 16, 14)
                 if (catId == selectedCategoryId) {
-                    setTextColor(context.getColor(R.color.purple_500))
+                    setTextColor(this@EditCardActivity.getColor(R.color.purple_500))
                 }
                 setOnClickListener {
                     selectedCategoryId = catId
