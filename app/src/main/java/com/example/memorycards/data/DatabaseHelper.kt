@@ -52,6 +52,30 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return db.insert(TABLE_CARDS, null, values)
     }
 
+    fun insertCards(cards: List<Pair<String, String>>): Int {
+        val db = writableDatabase
+        val now = System.currentTimeMillis()
+        db.beginTransaction()
+        var count = 0
+        try {
+            for ((front, back) in cards) {
+                val values = ContentValues().apply {
+                    put(COL_FRONT, front)
+                    put(COL_BACK, back)
+                    put(COL_BOX, 1)
+                    put(COL_NEXT_REVIEW, now) // ready to review immediately
+                    put(COL_CREATED_AT, now)
+                }
+                db.insert(TABLE_CARDS, null, values)
+                count++
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return count
+    }
+
     fun getAllCards(): List<Card> {
         val cards = mutableListOf<Card>()
         val db = readableDatabase

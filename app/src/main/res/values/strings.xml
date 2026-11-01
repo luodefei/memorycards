@@ -15,4 +15,11 @@
     <string name="confirm_delete">确定要删除这张卡片吗？</string>
     <string name="card_front_hint">输入问题/关键词</string>
     <string name="card_back_hint">输入答案/内容</string>
+    <string name="batch_import">批量导入</string>
+    <string name="batch_import_desc">每行一张卡片，用 | 分隔正反面</string>
+    <string name="batch_import_hint">JVM 是什么？|Java Virtual Machine\nGC 全称？|Garbage Collection\nOOM 是什么？|OutOfMemoryError</string>
+    <string name="import_btn">导入</string>
+    <string name="import_empty">请先输入卡片内容</string>
+    <string name="import_success">成功导入 %d 张卡片</string>
+    <string name="import_fail">没有识别到有效卡片，请检查格式</string>
 </resources>
