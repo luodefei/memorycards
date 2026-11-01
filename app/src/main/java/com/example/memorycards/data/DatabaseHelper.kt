@@ -99,12 +99,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 } else {
                     val values = ContentValues().apply {
                         put(COL_NAME, part)
-                        putNull(COL_PARENT_ID)
+                        if (parentId != null) put(COL_PARENT_ID, parentId)
+                        else putNull(COL_PARENT_ID)
                         put(COL_SORT_ORDER, 0)
                         put(COL_CREATED_AT, System.currentTimeMillis())
-                    }
-                    if (parentId != null) {
-                        put(COL_PARENT_ID, parentId)
                     }
                     val newId = db.insert(TABLE_CATEGORIES, null, values)
                     catMap[key] = newId
@@ -184,9 +182,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         cursor.close()
         val values = ContentValues().apply {
             put(COL_NAME, name)
-            if (parentId != null) put(COL_PARENT_ID, parentId)
-            put(COL_CREATED_AT, System.currentTimeMillis())
-        }
         return db.insert(TABLE_CATEGORIES, null, values)
     }
 
@@ -434,9 +429,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     fun createCategory(name: String, parentId: Long?): Long {
         val values = ContentValues().apply {
             put(COL_NAME, name)
-            if (parentId != null) put(COL_PARENT_ID, parentId)
-            put(COL_CREATED_AT, System.currentTimeMillis())
-        }
         return writableDatabase.insert(TABLE_CATEGORIES, null, values)
     }
 
@@ -450,9 +442,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             cursor.close()
 
             val childValues = ContentValues().apply {
-                if (parentId != null) put(COL_PARENT_ID, parentId)
-                else putNull(COL_PARENT_ID)
-            }
             db.update(TABLE_CATEGORIES, childValues, "$COL_PARENT_ID = ?", arrayOf(id.toString()))
 
             // uncategorize cards in this node
