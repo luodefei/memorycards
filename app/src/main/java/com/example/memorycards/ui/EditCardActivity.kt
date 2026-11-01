@@ -3,6 +3,7 @@ package com.example.memorycards.ui
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.memorycards.R
 import com.example.memorycards.data.DatabaseHelper
 import com.example.memorycards.databinding.ActivityEditCardBinding
 import com.example.memorycards.model.Card
