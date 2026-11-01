@@ -1,7 +1,6 @@
 package com.example.memorycards.ui
 
 import android.os.Bundle
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.memorycards.data.DatabaseHelper
@@ -73,7 +72,7 @@ class EditCardActivity : AppCompatActivity() {
                 textSize = 15f
                 setPadding(16, 14, 16, 14)
                 if (catId == selectedCategoryId) {
-                    setTextColor(getColor(R.color.purple_500))
+                    setTextColor(context.getColor(R.color.purple_500))
                 }
                 setOnClickListener {
                     selectedCategoryId = catId
