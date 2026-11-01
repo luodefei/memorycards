@@ -55,18 +55,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     fun getAllCards(): List<Card> {
         val cards = mutableListOf<Card>()
         val db = readableDatabase
-        val cursor = db.query(TABLE_CARDS, null, null, null, null, null, "$COL_CREATED_AT DESC")
+        val cursor = db.rawQuery("SELECT * FROM $TABLE_CARDS ORDER BY $COL_CREATED_AT DESC", null)
         while (cursor.moveToNext()) {
-            cards.add(
-                Card(
-                    id = cursor.getLong(cursor.getColumnIndexOrThrow(COL_ID)),
-                    front = cursor.getString(cursor.getColumnIndexOrThrow(COL_FRONT)),
-                    back = cursor.getString(cursor.getColumnIndexOrThrow(COL_BACK)),
-                    box = cursor.getInt(cursor.getColumnIndexOrThrow(COL_BOX)),
-                    nextReview = cursor.getLong(cursor.getColumnIndexOrThrow(COL_NEXT_REVIEW)),
-                    createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_CREATED_AT))
-                )
-            )
+            cards.add(cardFromCursor(cursor))
         }
         cursor.close()
         return cards
@@ -76,26 +67,26 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         val cards = mutableListOf<Card>()
         val db = readableDatabase
         val now = System.currentTimeMillis()
-        val cursor = db.query(
-            TABLE_CARDS, null,
-            "$COL_NEXT_REVIEW <= ?",
-            arrayOf(now.toString()),
-            null, null, "$COL_BOX ASC"
+        val cursor = db.rawQuery(
+            "SELECT * FROM $TABLE_CARDS WHERE $COL_NEXT_REVIEW <= ? ORDER BY $COL_BOX ASC",
+            arrayOf(now.toString())
         )
         while (cursor.moveToNext()) {
-            cards.add(
-                Card(
-                    id = cursor.getLong(cursor.getColumnIndexOrThrow(COL_ID)),
-                    front = cursor.getString(cursor.getColumnIndexOrThrow(COL_FRONT)),
-                    back = cursor.getString(cursor.getColumnIndexOrThrow(COL_BACK)),
-                    box = cursor.getInt(cursor.getColumnIndexOrThrow(COL_BOX)),
-                    nextReview = cursor.getLong(cursor.getColumnIndexOrThrow(COL_NEXT_REVIEW)),
-                    createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_CREATED_AT))
-                )
-            )
+            cards.add(cardFromCursor(cursor))
         }
         cursor.close()
         return cards
+    }
+
+    private fun cardFromCursor(cursor: android.database.Cursor): Card {
+        return Card(
+            id = cursor.getLong(cursor.getColumnIndexOrThrow(COL_ID)),
+            front = cursor.getString(cursor.getColumnIndexOrThrow(COL_FRONT)),
+            back = cursor.getString(cursor.getColumnIndexOrThrow(COL_BACK)),
+            box = cursor.getInt(cursor.getColumnIndexOrThrow(COL_BOX)),
+            nextReview = cursor.getLong(cursor.getColumnIndexOrThrow(COL_NEXT_REVIEW)),
+            createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_CREATED_AT))
+        )
     }
 
     fun updateCardReview(cardId: Long, remembered: Boolean) {
@@ -124,12 +115,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     private fun getCardBox(cardId: Long): Int {
         val db = readableDatabase
-        val cursor = db.query(
-            TABLE_CARDS,
-            arrayOf(COL_BOX),
-            "$COL_ID = ?",
-            arrayOf(cardId.toString()),
-            null, null, null
+        val cursor = db.rawQuery(
+            "SELECT $COL_BOX FROM $TABLE_CARDS WHERE $COL_ID = ?",
+            arrayOf(cardId.toString())
         )
         val box = if (cursor.moveToFirst()) {
             cursor.getInt(cursor.getColumnIndexOrThrow(COL_BOX))
