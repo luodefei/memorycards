@@ -494,7 +494,17 @@ class MainActivity : AppCompatActivity() {
                 else toggleCardSelection(card.id)
             },
             onClick = { card ->
-                if (selectionMode) toggleCardSelection(card.id)
+                if (selectionMode) {
+                    toggleCardSelection(card.id)
+                } else {
+                    startActivity(Intent(this, ReviewActivity::class.java).apply {
+                        if (currentNodeId != null) {
+                            putExtra(ReviewActivity.EXTRA_CATEGORY_ID, currentNodeId)
+                            putExtra(ReviewActivity.EXTRA_INCLUDE_CHILDREN, includeChildren)
+                        }
+                        putExtra(ReviewActivity.EXTRA_START_CARD_ID, card.id)
+                    })
+                }
             }
         )
         recyclerView.layoutManager = LinearLayoutManager(this)

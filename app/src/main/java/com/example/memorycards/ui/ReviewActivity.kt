@@ -16,6 +16,7 @@ class ReviewActivity : AppCompatActivity() {
         private const val TAG = "ReviewActivity"
         const val EXTRA_CATEGORY_ID = "review_category_id"
         const val EXTRA_INCLUDE_CHILDREN = "include_children"
+        const val EXTRA_START_CARD_ID = "start_card_id"
     }
 
     private lateinit var dbHelper: DatabaseHelper
@@ -24,11 +25,14 @@ class ReviewActivity : AppCompatActivity() {
     private var isShowingBack = false
     private var reviewCategoryId: Long? = null
     private var includeChildren = false
+    private var startCardId: Long? = null
 
-    private lateinit var cardLabel: android.widget.TextView
+    private lateinit var cardHeader: android.view.View
+    private lateinit var cardFaceIcon: android.widget.ImageView
+    private lateinit var progressText: android.widget.TextView
     private lateinit var cardContent: android.widget.TextView
-    private lateinit var loadedCount: android.widget.TextView
     private lateinit var flipCard: CardView
+    private lateinit var btnCrown: android.widget.ImageButton
     private lateinit var btnForgot: android.widget.Button
     private lateinit var btnRemember: android.widget.Button
 
@@ -39,25 +43,43 @@ class ReviewActivity : AppCompatActivity() {
         dbHelper = DatabaseHelper(this)
         reviewCategoryId = if (intent.hasExtra(EXTRA_CATEGORY_ID)) intent.getLongExtra(EXTRA_CATEGORY_ID, -1).let { if (it == -1L) null else it } else null
         includeChildren = intent.getBooleanExtra(EXTRA_INCLUDE_CHILDREN, false)
+        startCardId = intent.getLongExtra(EXTRA_START_CARD_ID, -1L).takeIf { it != -1L }
 
         val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
 
-        cardLabel = findViewById(R.id.tvCardLabel)
+        cardHeader = findViewById(R.id.cardHeader)
+        cardFaceIcon = findViewById(R.id.ivCardFace)
+        progressText = findViewById(R.id.tvProgress)
         cardContent = findViewById(R.id.tvCardContent)
-        loadedCount = findViewById(R.id.tvLoadedCount)
         flipCard = findViewById(R.id.flipCardContainer)
+        btnCrown = findViewById(R.id.btnCrown)
         btnForgot = findViewById(R.id.btnForgot)
         btnRemember = findViewById(R.id.btnRemember)
 
         flipCard.setOnClickListener { flipCard() }
         btnForgot.setOnClickListener { onAnswer(false) }
         btnRemember.setOnClickListener { onAnswer(true) }
+        btnCrown.setOnClickListener {
+            android.widget.Toast.makeText(this, "深度研究即将上线", android.widget.Toast.LENGTH_SHORT).show()
+        }
 
         loadReviewCards()
     }
 
     private fun loadReviewCards() {
+        if (startCardId != null) {
+            reviewList = dbHelper.getAllCards(categoryId = reviewCategoryId, includeChildren = includeChildren)
+            if (reviewList.isEmpty()) {
+                showComplete()
+                return
+            }
+            val index = reviewList.indexOfFirst { it.id == startCardId }
+            currentIndex = if (index >= 0) index else 0
+            showCard()
+            return
+        }
+
         reviewList = dbHelper.getCardsForReview(categoryId = reviewCategoryId, includeChildren = includeChildren)
         Log.d(TAG, "getCardsForReview returned ${reviewList.size} cards")
 
@@ -71,7 +93,6 @@ class ReviewActivity : AppCompatActivity() {
             return
         }
 
-        loadedCount.text = "共 ${reviewList.size} 张卡片待复习"
         currentIndex = 0
         showCard()
     }
@@ -80,9 +101,10 @@ class ReviewActivity : AppCompatActivity() {
         if (currentIndex >= reviewList.size) { showComplete(); return }
         isShowingBack = false
         val card = reviewList[currentIndex]
-        val progressText = "${currentIndex + 1} / ${reviewList.size}"
+        cardHeader.visibility = View.VISIBLE
+        progressText.text = "${currentIndex + 1}/${reviewList.size}"
+        cardFaceIcon.setImageResource(R.drawable.ic_card_front)
 
-        cardLabel.text = "📖 正面  |  $progressText"
         cardContent.text = card.front
         cardContent.setTextColor(getColor(R.color.black))
         flipCard.setCardBackgroundColor(getColor(R.color.card_front_bg))
@@ -99,13 +121,14 @@ class ReviewActivity : AppCompatActivity() {
         val anim = AnimationUtils.loadAnimation(this, R.anim.flip_vertical)
         flipCard.startAnimation(anim)
 
+        progressText.text = "${currentIndex + 1}/${reviewList.size}"
         if (isShowingBack) {
-            cardLabel.text = "📖 正面  |  ${currentIndex + 1} / ${reviewList.size}"
+            cardFaceIcon.setImageResource(R.drawable.ic_card_front)
             cardContent.text = card.front
             cardContent.setTextColor(getColor(R.color.black))
             flipCard.setCardBackgroundColor(getColor(R.color.card_front_bg))
         } else {
-            cardLabel.text = "📝 背面  |  ${currentIndex + 1} / ${reviewList.size}"
+            cardFaceIcon.setImageResource(R.drawable.ic_card_back)
             cardContent.text = card.back
             cardContent.setTextColor(getColor(R.color.black))
             flipCard.setCardBackgroundColor(getColor(R.color.card_back_bg))
@@ -122,12 +145,11 @@ class ReviewActivity : AppCompatActivity() {
     }
 
     private fun showComplete() {
-        cardLabel.text = "🎉"
+        cardHeader.visibility = View.GONE
         cardContent.text = getString(R.string.review_complete)
         cardContent.setTextColor(getColor(R.color.purple_700))
         flipCard.setCardBackgroundColor(getColor(R.color.white))
         btnForgot.isEnabled = false
         btnRemember.isEnabled = false
-        loadedCount.text = ""
     }
 }
