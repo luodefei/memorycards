@@ -11,4 +11,5 @@
 *.aab
 *.jks
 *.keystore
+!app/debug.keystore
 local.properties
