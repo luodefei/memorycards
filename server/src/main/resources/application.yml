@@ -1,0 +1,23 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: memorycards-server
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: jdbc:sqlite:${DB_FILE:memorycards.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 4
+      connection-init-sql: PRAGMA busy_timeout = 5000
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:memorycards-local-dev-secret-key-please-change-in-prod}
+    expiration-hours: ${JWT_EXPIRATION_HOURS:168}

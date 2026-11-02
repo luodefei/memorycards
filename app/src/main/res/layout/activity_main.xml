@@ -18,7 +18,22 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/purple_500"
             android:titleTextColor="@color/white"
-            app:title="🧠 记忆卡片" />
+            app:title="🧠 记忆卡片">
+
+            <ImageView
+                android:id="@+id/ivAvatar"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/avatar_gray_bg"
+                android:clickable="true"
+                android:contentDescription="用户头像"
+                android:focusable="true"
+                android:padding="7dp"
+                android:src="@drawable/ic_person" />
+
+        </androidx.appcompat.widget.Toolbar>
 
         <!-- 路径 + 包含子节点切换 -->
         <LinearLayout
@@ -202,6 +217,27 @@
                 android:paddingVertical="8dp" />
 
         </ScrollView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/btnBatchImport"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/chip_unselected_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:text="📥 批量导入"
+                android:textColor="@color/purple_700"
+                android:textSize="13sp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

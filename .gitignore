@@ -13,3 +13,6 @@
 *.keystore
 !app/debug.keystore
 local.properties
+/server/target/
+/server/*.db
+/server/data/

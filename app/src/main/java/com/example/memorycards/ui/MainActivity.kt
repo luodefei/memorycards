@@ -76,6 +76,15 @@ class MainActivity : AppCompatActivity() {
             loadCards()
         }
 
+        findViewById<View>(R.id.btnBatchImport).setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.START)
+            showBatchImportDialog()
+        }
+
+        findViewById<View>(R.id.ivAvatar).setOnClickListener {
+            Toast.makeText(this, "登录 / 会员中心即将上线", Toast.LENGTH_SHORT).show()
+        }
+
         setupRecyclerView()
         loadTree()
         loadCards()
@@ -114,11 +123,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
@@ -128,7 +132,6 @@ class MainActivity : AppCompatActivity() {
                     drawerLayout.openDrawer(GravityCompat.START)
                 true
             }
-            R.id.action_batch_import -> { showBatchImportDialog(); true }
             else -> super.onOptionsItemSelected(item)
         }
     }
