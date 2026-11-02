@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.ivAvatar).setOnClickListener {
-            Toast.makeText(this, "登录 / 会员中心即将上线", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, UserCenterActivity::class.java))
         }
 
         setupRecyclerView()

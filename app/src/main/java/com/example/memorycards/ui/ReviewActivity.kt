@@ -61,7 +61,9 @@ class ReviewActivity : AppCompatActivity() {
         btnForgot.setOnClickListener { onAnswer(false) }
         btnRemember.setOnClickListener { onAnswer(true) }
         btnCrown.setOnClickListener {
-            android.widget.Toast.makeText(this, "深度研究即将上线", android.widget.Toast.LENGTH_SHORT).show()
+            PremiumGate.onPremiumFeature(this) {
+                android.widget.Toast.makeText(this, "深度研究即将上线", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
 
         loadReviewCards()

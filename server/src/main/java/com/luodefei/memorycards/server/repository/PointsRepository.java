@@ -29,6 +29,13 @@ public class PointsRepository {
                 userId, amount, type, remark, System.currentTimeMillis());
     }
 
+    public int countByUserTypeSince(long userId, String type, long since) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM points_transactions WHERE user_id = ? AND type = ? AND created_at >= ?",
+                Integer.class, userId, type, since);
+        return count == null ? 0 : count;
+    }
+
     public List<PointsTransaction> findByUser(long userId, int limit) {
         return jdbc.query(
                 "SELECT * FROM points_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
