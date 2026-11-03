@@ -1,5 +1,6 @@
 package com.example.memorycards.data
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
@@ -8,15 +9,14 @@ import java.net.URL
 
 object Api {
 
-    // 部署后改成你的服务器地址；模拟器访问本机用 http://10.0.2.2:8080
-    const val BASE_URL = "http://10.0.2.2:8080"
+    const val BASE_URL = "https://df.tail58cde9.ts.net"
 
     interface Callback {
         fun onSuccess(body: String)
         fun onError(code: Int, message: String)
     }
 
-    fun request(path: String, method: String = "GET", jsonBody: String? = null,
+    fun request(context: Context, path: String, method: String = "GET", jsonBody: String? = null,
                 callback: Callback) {
         Thread {
             var success = false
@@ -27,6 +27,10 @@ object Api {
                 conn.requestMethod = method
                 conn.connectTimeout = 8000
                 conn.readTimeout = 8000
+                val token = Session.token(context)
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer $token")
+                }
                 if (jsonBody != null) {
                     conn.doOutput = true
                     conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")

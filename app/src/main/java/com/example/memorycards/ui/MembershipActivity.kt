@@ -35,7 +35,7 @@ class MembershipActivity : AppCompatActivity() {
     }
 
     private fun loadLevels() {
-        Api.request("/api/membership/levels", "GET", null, object : Api.Callback {
+        Api.request(this, "/api/membership/levels", "GET", null, object : Api.Callback {
             override fun onSuccess(body: String) {
                 runCatching { JSONArray(body) }
                     .onSuccess { renderLevels(it) }
@@ -83,7 +83,7 @@ class MembershipActivity : AppCompatActivity() {
             return
         }
         val body = JSONObject().put("levelCode", code)
-        Api.request("/api/membership/subscribe", "POST", body.toString(), object : Api.Callback {
+        Api.request(this, "/api/membership/subscribe", "POST", body.toString(), object : Api.Callback {
             override fun onSuccess(body: String) {
                 runCatching { JSONObject(body) }.onSuccess { json ->
                     AlertDialog.Builder(this@MembershipActivity)

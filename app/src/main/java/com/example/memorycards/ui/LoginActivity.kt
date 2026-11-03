@@ -64,7 +64,7 @@ class LoginActivity : AppCompatActivity() {
         btnSubmit.isEnabled = false
         val body = JSONObject().put("username", username).put("password", password)
         val path = if (registerMode) "/api/auth/register" else "/api/auth/login"
-        Api.request(path, "POST", body.toString(), object : Api.Callback {
+        Api.request(this, path, "POST", body.toString(), object : Api.Callback {
             override fun onSuccess(body: String) {
                 btnSubmit.isEnabled = true
                 runCatching {

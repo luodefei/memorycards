@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>记忆星空</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+  <canvas id="shaderCanvas" class="hidden"></canvas>
+  <canvas id="cloudCanvas" class="hidden"></canvas>
+  <canvas id="textCanvas"></canvas>
+
+  <div id="cockpit" class="cockpit">
+    <div class="cockpit-top"></div><div class="cockpit-left"></div><div class="cockpit-right"></div><div class="cockpit-bottom"></div>
+    <div class="cockpit-bl"></div><div class="cockpit-br"></div><div class="cockpit-tl"></div><div class="cockpit-tr"></div>
+  </div>
+
+  <div id="hud" class="hud">
+    <div id="hudCardNum" class="hud-num">01</div>
+    <div class="hud-line"></div>
+    <div id="hudCardTotal" class="hud-total">/ 00</div>
+    <div id="hudCategory" class="hud-cat"></div>
+    <div id="hudBox" class="hud-box"></div>
+  </div>
+
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <div>正在启动记忆星空...</div>
+  </div>
+
+  <div id="empty" class="empty hidden">
+    <div class="empty-icon">🌌</div>
+    <div>还没有记忆卡片</div>
+    <div class="empty-sub">在记忆卡片 App 中添加一些卡片吧</div>
+  </div>
+
+  <button id="prevZone" class="arc-zone arc-left" aria-label="上一张卡片">‹</button>
+  <button id="nextZone" class="arc-zone arc-right" aria-label="下一张卡片">›</button>
+
+  <button id="exitStarfield" class="top-btn top-right hidden" title="退出星空记忆">退出星空</button>
+
+  <div id="folderMenu" class="folder-menu"></div>
+  <button id="folderToggle" class="mode-btn folder-toggle" title="选择目录">📁</button>
+
+  <button id="speedToggle" class="speed-btn hidden" title="切换 3D 翻页档位">1×</button>
+  <div id="modeMenu" class="mode-menu">
+    <button class="mode-item" data-mode="planet" title="星球模式">🪐</button>
+    <button class="mode-item" data-mode="read" title="阅读模式">📖</button>
+    <button class="mode-item" data-mode="cloud" title="白云模式">☁️</button>
+    <button class="mode-item" data-mode="3d" title="3D 模式">3D</button>
+  </div>
+  <button id="modeToggle" class="mode-btn" title="切换模式">🪐</button>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

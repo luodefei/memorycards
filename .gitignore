@@ -16,3 +16,8 @@ local.properties
 /server/target/
 /server/*.db
 /server/data/
+
+# 前端构建产物与依赖
+/starfield/node_modules/
+/starfield/dist/
+/app/build/

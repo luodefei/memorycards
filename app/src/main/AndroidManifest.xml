@@ -40,6 +40,11 @@
         <activity
             android:name=".ui.MembershipActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.StarfieldActivity"
+            android:exported="false"
+            android:hardwareAccelerated="true" />
     </application>
 
 </manifest>

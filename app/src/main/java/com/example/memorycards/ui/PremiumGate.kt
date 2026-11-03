@@ -23,7 +23,7 @@ object PremiumGate {
                 .show()
             return
         }
-        Api.request("/api/membership/current", "GET", null, object : Api.Callback {
+        Api.request(activity, "/api/membership/current", "GET", null, object : Api.Callback {
             override fun onSuccess(body: String) {
                 // 204 无内容 = 未开通会员
                 val member = body.isNotBlank() &&
@@ -65,7 +65,7 @@ object PremiumGate {
             .setTitle("购买积分")
             .setItems(packs) { _, which ->
                 val body = JSONObject().put("points", points[which])
-                Api.request("/api/points/purchase", "POST", body.toString(), object : Api.Callback {
+                Api.request(activity, "/api/points/purchase", "POST", body.toString(), object : Api.Callback {
                     override fun onSuccess(body: String) = toastGranted(activity, body)
                     override fun onError(code: Int, message: String) {
                         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
@@ -77,7 +77,7 @@ object PremiumGate {
     }
 
     private fun checkin(activity: Activity) {
-        Api.request("/api/points/checkin", "POST", "{}", object : Api.Callback {
+        Api.request(activity, "/api/points/checkin", "POST", "{}", object : Api.Callback {
             override fun onSuccess(body: String) = toastGranted(activity, body)
             override fun onError(code: Int, message: String) {
                 Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
@@ -91,7 +91,7 @@ object PremiumGate {
             putExtra(Intent.EXTRA_TEXT, "我在用「记忆卡片」背知识点，推荐给你～")
         }
         activity.startActivity(Intent.createChooser(send, "分享记忆卡片"))
-        Api.request("/api/points/share", "POST", "{}", object : Api.Callback {
+        Api.request(activity, "/api/points/share", "POST", "{}", object : Api.Callback {
             override fun onSuccess(body: String) = toastGranted(activity, body)
             override fun onError(code: Int, message: String) {
                 Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()

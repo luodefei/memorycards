@@ -1,0 +1,202 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+
+#starfield { display: block; position: fixed; top: 0; left: 0; }
+#shaderCanvas { display: block; position: fixed; top: 0; left: 0; z-index: 4; width: 100%; height: 100%; }
+#cloudCanvas { display: block; position: fixed; top: 0; left: 0; z-index: 5; background: linear-gradient(180deg, #0a2f66 0%, #1666bd 45%, #3d94dd 100%); }
+#textCanvas { display: block; position: fixed; top: 0; left: 0; pointer-events: none; z-index: 7; }
+
+.hidden { display: none !important; }
+
+.loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: rgba(255,255,255,0.8); font-size: 14px; z-index: 10; }
+.spinner { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.1); border-top-color: #4ECDC4; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading.hidden { display: none; }
+
+.empty { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: rgba(255,255,255,0.7); font-size: 16px; z-index: 10; }
+.empty.hidden { display: none; }
+.empty-icon { font-size: 56px; }
+.empty-sub { font-size: 13px; color: rgba(255,255,255,0.4); }
+
+/* Cockpit */
+.cockpit { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.cockpit-top { position: absolute; top: 0; left: 0; right: 0; height: 18px; background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%); }
+.cockpit-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(0deg, rgba(0,0,0,0.5) 0%, transparent 100%); }
+.cockpit-left { position: absolute; top: 0; left: 0; bottom: 0; width: 12px; background: linear-gradient(90deg, rgba(0,0,0,0.4) 0%, transparent 100%); }
+.cockpit-right { position: absolute; top: 0; right: 0; bottom: 0; width: 12px; background: linear-gradient(270deg, rgba(0,0,0,0.4) 0%, transparent 100%); }
+.cockpit-bl, .cockpit-br, .cockpit-tl, .cockpit-tr { position: absolute; width: 80px; height: 80px; border: 1px solid rgba(255,255,255,0.06); }
+.cockpit-bl { bottom: 0; left: 0; border-top-right-radius: 60px; border-left: none; border-bottom: none; }
+.cockpit-br { bottom: 0; right: 0; border-top-left-radius: 60px; border-right: none; border-bottom: none; }
+.cockpit-tl { top: 0; left: 0; border-bottom-right-radius: 60px; border-left: none; border-top: none; }
+.cockpit-tr { top: 0; right: 0; border-bottom-left-radius: 60px; border-right: none; border-top: none; }
+
+/* HUD */
+.hud { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 6; color: rgba(255,255,255,0.6); font-family: 'Courier New', monospace; font-size: 16px; }
+.hud-num { color: #4ECDC4; font-size: 24px; font-weight: bold; min-width: 28px; text-align: right; }
+.hud-total { font-size: 14px; color: rgba(255,255,255,0.3); }
+.hud-line { width: 1px; height: 20px; background: rgba(255,255,255,0.15); margin: 0 10px; }
+.hud-cat { font-size: 11px; color: rgba(255,255,255,0.35); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-box { font-size: 11px; color: rgba(255,255,255,0.3); margin-left: 8px; }
+
+/* HUD over bright 3D background — dark scrim keeps text readable */
+.hud.shader-hud {
+  padding: 4px 12px; border-radius: 8px;
+  background: rgba(0,0,0,0.42);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Mode toggle button — 透明底、淡边线，与底部圆框同风格 */
+.mode-btn {
+  position: fixed; bottom: 100px; right: 16px; z-index: 10;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: rgba(255,255,255,0.8);
+  font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  transition: border-color 0.3s, background 0.3s;
+}
+.mode-btn:hover { border-color: rgba(255,255,255,0.24); }
+.mode-btn:active { border-color: rgba(125,228,208,0.45); }
+
+/* 模式选择弹层 — 围绕切换按钮向上展开，同款圆形淡边线 */
+.mode-menu {
+  position: fixed; right: 16px; bottom: 154px; z-index: 10;
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 10px;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.mode-menu.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.mode-item {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  font-family: 'Courier New', monospace;
+  font-size: 17px; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  transition: border-color 0.25s, color 0.25s, transform 0.25s;
+}
+.mode-item:active { transform: scale(0.94); }
+.mode-item.active { border-color: rgba(125,228,208,0.45); color: rgba(255,255,255,0.92); }
+
+/* 明亮场景（白云模式）：淡边线与图标改为深色描边，保持可读 */
+.light-scene .mode-btn,
+.light-scene .mode-item {
+  border-color: rgba(12,40,80,0.22);
+  color: rgba(12,38,70,0.78);
+  text-shadow: 0 1px 4px rgba(255,255,255,0.55);
+}
+.light-scene .mode-item.active { border-color: rgba(10,120,110,0.55); color: rgba(8,60,95,0.95); }
+
+/* 3D 翻页档位 — 比主按钮小一号，透明底淡边线，置于模式按钮左侧 */
+.speed-btn {
+  position: fixed; bottom: 105px; right: 70px; z-index: 10;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: transparent;
+  color: rgba(255,255,255,0.38);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+  transition: border-color 0.3s, color 0.3s;
+}
+.speed-btn:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); }
+.speed-btn:active { border-color: rgba(125,228,208,0.40); }
+
+/* 底部两角圆弧热区 — 左/右翻页 */
+.arc-zone {
+  position: fixed; bottom: 0; z-index: 8;
+  width: 128px; height: 116px;
+  background: transparent; border: none; outline: none;
+  color: rgba(255,255,255,0.22);
+  font-size: 22px; line-height: 1;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 26px;
+  cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.25s, background 0.25s;
+}
+.arc-left { left: 0; border-bottom-right-radius: 70px; }
+.arc-right { right: 0; border-bottom-left-radius: 70px; }
+.arc-left:active { color: rgba(125,228,208,0.75); background: radial-gradient(circle at 0% 100%, rgba(78,205,196,0.16), transparent 72%); }
+.arc-right:active { color: rgba(125,228,208,0.75); background: radial-gradient(circle at 100% 100%, rgba(78,205,196,0.16), transparent 72%); }
+
+/* 顶部两侧功能键 */
+.top-btn {
+  position: fixed; top: 14px; z-index: 10;
+  height: 30px; padding: 0 12px; border-radius: 15px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255,255,255,0.72);
+  font-family: 'Courier New', monospace;
+  font-size: 12px; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.3s, background 0.3s;
+}
+.top-btn:active { border-color: rgba(125,228,208,0.6); background: rgba(0,0,0,0.55); }
+.top-left { left: 14px; }
+.top-right { right: 14px; }
+
+/* 首次进入：退出入口提示呼吸灯 */
+#exitStarfield:not(.hidden) { animation: exitHint 1.8s ease-in-out infinite; }
+@keyframes exitHint {
+  0%, 100% { border-color: rgba(255,255,255,0.2); }
+  50% { border-color: rgba(125,228,208,0.55); }
+}
+
+/* 左下：目录（知识体系树） */
+.folder-toggle { left: 16px; right: auto; font-size: 16px; }
+
+.folder-menu {
+  position: fixed; left: 16px; bottom: 154px; z-index: 10;
+  width: min(78vw, 300px); max-height: 50vh; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 2px;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.folder-menu.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+.folder-item {
+  display: flex; align-items: center; gap: 7px;
+  flex: none; height: 34px; padding: 0 10px;
+  border-radius: 9px; border: 1px solid rgba(255,255,255,0.10);
+  background: transparent;
+  color: rgba(255,255,255,0.62);
+  font-family: 'Courier New', monospace;
+  font-size: 13px; text-align: left; white-space: nowrap;
+  cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+  transition: border-color 0.25s, color 0.25s;
+}
+.folder-item:active { border-color: rgba(125,228,208,0.45); color: rgba(255,255,255,0.9); }
+.folder-item.active { border-color: rgba(125,228,208,0.42); color: rgba(255,255,255,0.92); }
+.folder-chevron { width: 12px; flex: none; text-align: center; font-size: 10px; color: rgba(255,255,255,0.32); }
+.folder-ico { font-size: 12px; opacity: 0.8; flex: none; }
+.folder-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.folder-count { font-size: 11px; color: rgba(255,255,255,0.3); flex: none; }
+
+/* 明亮场景（白云模式）：目录项与档位按钮改深色淡边线 */
+.light-scene .folder-item { border-color: rgba(12,40,80,0.22); color: rgba(12,38,70,0.72); text-shadow: 0 1px 4px rgba(255,255,255,0.5); }
+.light-scene .folder-count { color: rgba(12,38,70,0.45); }
+.light-scene .speed-btn { border-color: rgba(12,40,80,0.22); color: rgba(12,38,70,0.6); text-shadow: 0 1px 4px rgba(255,255,255,0.5); }

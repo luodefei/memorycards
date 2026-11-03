@@ -1,14 +1,21 @@
 package com.example.memorycards.ui
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.res.ResourcesCompat
 import com.example.memorycards.R
 import com.example.memorycards.data.Api
 import com.example.memorycards.data.Session
@@ -21,6 +28,7 @@ class UserCenterActivity : AppCompatActivity() {
 
     private lateinit var tvName: TextView
     private lateinit var tvStatus: TextView
+    private lateinit var ivAvatar: ImageView
     private lateinit var loginButtons: LinearLayout
     private lateinit var actionsCard: View
     private lateinit var tvPointsValue: TextView
@@ -35,6 +43,7 @@ class UserCenterActivity : AppCompatActivity() {
 
         tvName = findViewById(R.id.tvName)
         tvStatus = findViewById(R.id.tvStatus)
+        ivAvatar = findViewById(R.id.ivAvatarBig)
         loginButtons = findViewById(R.id.loginButtons)
         actionsCard = findViewById(R.id.actionsCard)
         tvPointsValue = findViewById(R.id.tvPointsValue)
@@ -51,6 +60,9 @@ class UserCenterActivity : AppCompatActivity() {
         findViewById<View>(R.id.rowShare).setOnClickListener { if (requireLogin()) doShare() }
         findViewById<View>(R.id.rowBuy).setOnClickListener { if (requireLogin()) showBuyDialog() }
         findViewById<View>(R.id.rowMembership).setOnClickListener { if (requireLogin()) openMembership() }
+        findViewById<View>(R.id.rowStarfield).setOnClickListener {
+            PremiumGate.onPremiumFeature(this) { openStarfield() }
+        }
 
         btnLogout.setOnClickListener {
             AlertDialog.Builder(this)
@@ -75,7 +87,7 @@ class UserCenterActivity : AppCompatActivity() {
             renderLoggedOut()
             return
         }
-        Api.request("/api/users/me", "GET", null, object : Api.Callback {
+        Api.request(this, "/api/users/me", "GET", null, object : Api.Callback {
             override fun onSuccess(body: String) {
                 runCatching { JSONObject(body) }
                     .onSuccess { renderUser(it) }
@@ -94,6 +106,8 @@ class UserCenterActivity : AppCompatActivity() {
     }
 
     private fun renderLoggedOut() {
+        ivAvatar.setImageResource(R.drawable.ic_person)
+        ivAvatar.setBackgroundResource(R.drawable.avatar_gray_bg)
         tvName.text = "未登录"
         tvStatus.text = "登录后可使用会员与积分功能"
         loginButtons.visibility = View.VISIBLE
@@ -102,7 +116,10 @@ class UserCenterActivity : AppCompatActivity() {
     }
 
     private fun renderUser(user: JSONObject) {
-        tvName.text = user.optString("username")
+        val username = user.optString("username")
+        tvName.text = username
+        ivAvatar.setImageBitmap(buildAvatarBitmap(username))
+        ivAvatar.setBackgroundResource(android.R.color.transparent)
         tvPointsValue.text = "${user.optInt("points", 0)}"
 
         val member = user.optJSONObject("membership")
@@ -130,6 +147,10 @@ class UserCenterActivity : AppCompatActivity() {
         startActivity(Intent(this, MembershipActivity::class.java))
     }
 
+    private fun openStarfield() {
+        startActivity(Intent(this, StarfieldActivity::class.java))
+    }
+
     private fun requireLogin(): Boolean {
         if (Session.isLoggedIn(this)) return true
         AlertDialog.Builder(this)
@@ -142,7 +163,7 @@ class UserCenterActivity : AppCompatActivity() {
     }
 
     private fun doCheckin() {
-        Api.request("/api/points/checkin", "POST", "{}", object : Api.Callback {
+        Api.request(this, "/api/points/checkin", "POST", "{}", object : Api.Callback {
             override fun onSuccess(body: String) = showGranted(body)
             override fun onError(code: Int, message: String) {
                 Toast.makeText(this@UserCenterActivity, message, Toast.LENGTH_SHORT).show()
@@ -156,7 +177,7 @@ class UserCenterActivity : AppCompatActivity() {
             putExtra(Intent.EXTRA_TEXT, "我在用「记忆卡片」背知识点，推荐给你～")
         }
         startActivity(Intent.createChooser(send, "分享记忆卡片"))
-        Api.request("/api/points/share", "POST", "{}", object : Api.Callback {
+        Api.request(this, "/api/points/share", "POST", "{}", object : Api.Callback {
             override fun onSuccess(body: String) = showGranted(body)
             override fun onError(code: Int, message: String) {
                 Toast.makeText(this@UserCenterActivity, message, Toast.LENGTH_SHORT).show()
@@ -171,7 +192,7 @@ class UserCenterActivity : AppCompatActivity() {
             .setTitle("购买积分")
             .setItems(packs) { _, which ->
                 val body = JSONObject().put("points", points[which])
-                Api.request("/api/points/purchase", "POST", body.toString(), object : Api.Callback {
+                Api.request(this, "/api/points/purchase", "POST", body.toString(), object : Api.Callback {
                     override fun onSuccess(body: String) = showGranted(body)
                     override fun onError(code: Int, message: String) {
                         Toast.makeText(this@UserCenterActivity, message, Toast.LENGTH_SHORT).show()
@@ -189,5 +210,39 @@ class UserCenterActivity : AppCompatActivity() {
             tvPointsValue.text = "$total"
             Toast.makeText(this, "到账 $granted 积分，当前 $total", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun buildAvatarBitmap(username: String): Bitmap {
+        val size = 144
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = avatarColors[username.hashCode().and(0x7FFFFFFF) % avatarColors.size]
+        }
+        val radius = size / 2f
+        canvas.drawCircle(radius, radius, radius, bgPaint)
+        val initial = if (username.isNotEmpty()) username.first().uppercase() else "?"
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt()
+            textSize = size * 0.42f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            textAlign = Paint.Align.CENTER
+        }
+        val textBounds = Rect()
+        textPaint.getTextBounds(initial, 0, initial.length, textBounds)
+        val yOffset = -((textPaint.descent() + textPaint.ascent()) / 2)
+        canvas.drawText(initial, radius, radius + yOffset, textPaint)
+        return bitmap
+    }
+
+    companion object {
+        private val avatarColors = intArrayOf(
+            0xFFEF5350.toInt(), 0xFFEC407A.toInt(), 0xFFAB47BC.toInt(),
+            0xFF7E57C2.toInt(), 0xFF5C6BC0.toInt(), 0xFF42A5F5.toInt(),
+            0xFF29B6F6.toInt(), 0xFF26C6DA.toInt(), 0xFF26A69A.toInt(),
+            0xFF66BB6A.toInt(), 0xFF9CCC65.toInt(), 0xFFFF7043.toInt(),
+            0xFF8D6E63.toInt(), 0xFF78909C.toInt(), 0xFFFFA726.toInt(),
+            0xFFFFCA28.toInt(),
+        )
     }
 }
