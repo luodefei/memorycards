@@ -76,6 +76,7 @@ let entranceGap = 0            // frames until next planet may enter (0 = none)
 let entranceGapTarget = 0      // total gap duration for display
 
 // Typewriter — two-phase: front → pause → back
+let paused = false         // HUD 播放/暂停：冻结卡片推进与动画时间轴
 let typingPhase = 'idle'   // idle | front | pause | back | done
 let revealedChars = 0
 let frontCharCount = 0
@@ -649,13 +650,8 @@ function stagePlanet() {
 
 function updateHUDForPlanet(idx) {
   const n = idx + 1
-  const card = cards[idx]
   document.getElementById('hudCardNum').textContent = String(n).padStart(2, '0')
-  document.getElementById('hudCategory').textContent = card?.categoryPath || ''
-  const box = card?.box || 1
-  document.getElementById('hudBox').textContent = `Box ${box}`
-  const boxColors = ['', '#FF5252', '#FF7043', '#FFCA28', '#4ECDC4', '#5C6BC0']
-  document.getElementById('hudBox').style.color = boxColors[Math.min(box, 5)] || '#888'
+  document.getElementById('hudCardTotal').textContent = String(cards.length).padStart(2, '0')
 }
 
 // ============================================================
@@ -909,8 +905,6 @@ function enterCloudMode() {
   document.getElementById('hud').classList.remove('hidden')
   const tc = document.getElementById('textCanvas')
   if (tc) tc.classList.remove('hidden')
-  const hud = document.getElementById('hud')
-  if (hud) hud.classList.add('shader-hud')
 
   // Show cloud canvas
   cloudCanvas.classList.remove('hidden')
@@ -932,8 +926,6 @@ function exitCloudMode() {
   document.getElementById('hud').classList.remove('hidden')
   const tc = document.getElementById('textCanvas')
   if (tc) tc.classList.remove('hidden')
-  const hud = document.getElementById('hud')
-  if (hud) hud.classList.remove('shader-hud')
 
   // Reset mode button to planet
   const btn2 = document.getElementById('modeToggle')
@@ -1079,12 +1071,13 @@ function animateShader() {
   shaderLastTs = now
   // 档位 1 最慢（4 秒/张），档位 8 最快（0.5 秒/张），线性递减
   const ringSeconds = RING_SECONDS_SLOWEST - (RING_SECONDS_SLOWEST - RING_SECONDS_FASTEST) * (shaderLevel - 1) / 7
-  shaderAccum += dt * (1 / ringSeconds)
+  if (!paused) shaderAccum += dt * (1 / ringSeconds)
   shaderGl.uniform3f(shaderUniforms.resolution, shaderCanvas.width, shaderCanvas.height, 1)
   shaderGl.uniform1f(shaderUniforms.time, shaderAccum)
   shaderGl.drawArrays(shaderGl.TRIANGLES, 0, 3)
 
   // 一个「环」翻一张卡片，与画面同一条时间轴，调速时自动同步
+  if (paused) return
   const ring = Math.floor(shaderAccum / RING_PER_CARD)
   if (ring !== shaderRingIdx) {
     shaderRingIdx = ring
@@ -1124,8 +1117,6 @@ function enterShaderMode() {
   document.getElementById('hud').classList.remove('hidden')
   const tc = document.getElementById('textCanvas')
   if (tc) tc.classList.remove('hidden')
-  const hud = document.getElementById('hud')
-  if (hud) hud.classList.add('shader-hud')
   shaderCanvas.classList.remove('hidden')
   // 速度胶囊：只在 3D 模式显示
   const sp = document.getElementById('speedToggle')
@@ -1149,8 +1140,6 @@ function exitShaderMode() {
   document.getElementById('hud').classList.remove('hidden')
   const tc = document.getElementById('textCanvas')
   if (tc) tc.classList.remove('hidden')
-  const hud = document.getElementById('hud')
-  if (hud) hud.classList.remove('shader-hud')
 
   const btn = document.getElementById('modeToggle')
   if (btn) {
@@ -1363,7 +1352,8 @@ function applyCardSet(node) {
   entranceGap = 0
   entranceGapTarget = 0
   currentCardIdx = 0
-  document.getElementById('hudCardTotal').textContent = `/ ${String(cards.length).padStart(2, '0')}`
+  document.getElementById('hudCardTotal').textContent = String(cards.length).padStart(2, '0')
+  updateHudFolderName()
   startCard()
 
   if (shaderMode) {
@@ -1410,7 +1400,7 @@ function startCard() {
   const card = cards[currentCardIdx]
   computeTextLayout(card.front, card.back)
   if (readMode) {
-    updateHUDForReadMode(card, currentCardIdx)
+    updateHUDForReadMode(currentCardIdx)
   } else {
     updateHUDForPlanet(currentCardIdx)
   }
@@ -1425,13 +1415,39 @@ function startCard() {
   renderText()
 }
 
-function updateHUDForReadMode(card, idx) {
+function updateHUDForReadMode(idx) {
   const n = idx + 1
   document.getElementById('hudCardNum').textContent = String(n).padStart(2, '0')
-  const total = String(cards.length).padStart(2, '0')
-  document.getElementById('hudCardTotal').textContent = `/ ${total}`
-  document.getElementById('hudCategory').textContent = card.categoryPath || ''
-  document.getElementById('hudBox').textContent = '阅读模式'
+  document.getElementById('hudCardTotal').textContent = String(cards.length).padStart(2, '0')
+  updateHudFolderName()
+}
+
+// HUD 目录段只显示当前选中节点名字，点击弹出目录浮窗
+function updateHudFolderName() {
+  const el = document.getElementById('hudFolderName')
+  if (!el) return
+  const node = findCategoryNode(selectedFolderPath)
+  el.textContent = node ? node.name : '全部'
+  el.parentElement.title = selectedFolderPath || '全部'
+}
+
+function findCategoryNode(path) {
+  if (!categoryTree) return null
+  if (!path) return categoryTree
+  let node = categoryTree
+  for (const seg of path.split('/')) {
+    node = node.children.find(c => c.name === seg)
+    if (!node) return null
+  }
+  return node
+}
+
+function togglePlayPause() {
+  paused = !paused
+  const btn = document.getElementById('hudPlay')
+  if (!btn) return
+  btn.textContent = paused ? '▶' : '⏸'
+  btn.title = paused ? '播放' : '暂停'
 }
 
 // ============================================================
@@ -1479,8 +1495,9 @@ async function init() {
   galaxies = groupIntoGalaxies()
   if (galaxies.length === 0) galaxies = [{ name: '记忆星系', cards }]
 
-  document.getElementById('hudCardTotal').textContent = `/ ${String(cards.length).padStart(2, '0')}`
+  document.getElementById('hudCardTotal').textContent = String(cards.length).padStart(2, '0')
   document.getElementById('loading').classList.add('hidden')
+  updateHudFolderName()
 
   // Create nebula for first galaxy
   nebulaGroup = createGalaxyNebula(galaxies[galaxyIdx].name)
@@ -1573,6 +1590,18 @@ async function init() {
   document.getElementById('folderToggle').addEventListener('click', (e) => {
     e.stopPropagation()
     toggleFolderMenu()
+  })
+
+  // HUD 目录段：显示当前节点名，点击弹出同一个目录浮窗
+  document.getElementById('hudFolder').addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleFolderMenu()
+  })
+
+  // HUD 播放/暂停：二合一按钮
+  document.getElementById('hudPlay').addEventListener('click', (e) => {
+    e.stopPropagation()
+    togglePlayPause()
   })
 
   // 右上：退出星空记忆 —— 仅首次进入提示，5 秒后自动收起
@@ -1782,6 +1811,13 @@ function animate() {
   // ---- Typewriter ----
   // 3D 模式：翻页由环形动画驱动、文字整卡显示，跳过打字机与自动翻页
   if (shaderMode) return
+
+  // 暂停：文字推进与自动翻页冻结，背景与画面照常绘制
+  if (paused) {
+    renderText()
+    if (!cloudMode) renderer.render(scene, camera)
+    return
+  }
 
   const totalTarget = typingPhase === 'front' ? frontCharCount
     : (typingPhase === 'pause' || typingPhase === 'back') ? frontCharCount + backCharCount

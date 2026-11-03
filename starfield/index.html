@@ -18,11 +18,15 @@
   </div>
 
   <div id="hud" class="hud">
-    <div id="hudCardNum" class="hud-num">01</div>
-    <div class="hud-line"></div>
-    <div id="hudCardTotal" class="hud-total">/ 00</div>
-    <div id="hudCategory" class="hud-cat"></div>
-    <div id="hudBox" class="hud-box"></div>
+    <div class="hud-count">
+      <span id="hudCardNum" class="hud-num">01</span>
+      <span class="hud-slash">/</span>
+      <span id="hudCardTotal" class="hud-total">00</span>
+    </div>
+    <span class="hud-divider"></span>
+    <button id="hudFolder" class="hud-folder" title="选择目录"><span id="hudFolderName">全部</span></button>
+    <span class="hud-divider"></span>
+    <button id="hudPlay" class="hud-play" title="暂停">⏸</button>
   </div>
 
   <div id="loading" class="loading">
