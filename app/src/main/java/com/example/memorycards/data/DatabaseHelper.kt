@@ -19,7 +19,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     companion object {
         private const val DATABASE_NAME = "memorycards.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
         private const val TABLE_CARDS = "cards"
         private const val TABLE_CATEGORIES = "categories"
         private const val COL_ID = "id"
@@ -30,6 +30,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         private const val COL_BOX = "box"
         private const val COL_NEXT_REVIEW = "next_review"
         private const val COL_CREATED_AT = "created_at"
+        private const val COL_DEEP_RESEARCH = "deep_research"
         private const val COL_NAME = "name"
         private const val COL_PARENT_ID = "parent_id"
         private const val COL_SORT_ORDER = "sort_order"
@@ -56,6 +57,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 $COL_BOX INTEGER DEFAULT 1,
                 $COL_NEXT_REVIEW INTEGER DEFAULT 0,
                 $COL_CREATED_AT INTEGER DEFAULT 0,
+                $COL_DEEP_RESEARCH TEXT DEFAULT '',
                 FOREIGN KEY ($COL_CATEGORY_ID) REFERENCES $TABLE_CATEGORIES($COL_ID)
             )
         """.trimIndent())
@@ -78,6 +80,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             db.execSQL("ALTER TABLE $TABLE_CARDS ADD COLUMN $COL_CATEGORY_ID INTEGER")
             // migrate old category strings to tree
             migrateOldCategories(db)
+        }
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE $TABLE_CARDS ADD COLUMN $COL_DEEP_RESEARCH TEXT DEFAULT ''")
         }
     }
 
@@ -254,7 +259,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             categoryPath = cursor.getString(cursor.getColumnIndexOrThrow(COL_CATEGORY)) ?: "",
             box = cursor.getInt(cursor.getColumnIndexOrThrow(COL_BOX)),
             nextReview = cursor.getLong(cursor.getColumnIndexOrThrow(COL_NEXT_REVIEW)),
-            createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_CREATED_AT))
+            createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_CREATED_AT)),
+            deepResearch = cursor.getString(cursor.getColumnIndexOrThrow(COL_DEEP_RESEARCH)) ?: ""
         )
     }
 
@@ -268,6 +274,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             put(COL_BOX, card.box)
             put(COL_NEXT_REVIEW, card.nextReview)
             put(COL_CREATED_AT, card.createdAt)
+            put(COL_DEEP_RESEARCH, card.deepResearch)
         }
     }
 
@@ -320,6 +327,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             put(COL_NEXT_REVIEW, nextReview)
         }
         db.update(TABLE_CARDS, values, "$COL_ID = ?", arrayOf(cardId.toString()))
+    }
+
+    fun updateCardDeepResearch(cardId: Long, result: String) {
+        val values = ContentValues().apply { put(COL_DEEP_RESEARCH, result) }
+        writableDatabase.update(TABLE_CARDS, values, "$COL_ID = ?", arrayOf(cardId.toString()))
     }
 
     private fun getCardBox(cardId: Long): Int {

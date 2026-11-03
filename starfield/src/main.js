@@ -17,14 +17,16 @@ const BG_STAR_COUNT = 900
 const MAX_VISIBLE_PLANETS = 8
 
 // Planet types — only Saturn has rings
-const PLANET_TYPES = ['earth', 'saturn', 'moon', 'star', 'mars', 'jupiter', 'neptune']
+const PLANET_TYPES = ['earth', 'saturn', 'moon', 'star', 'mars', 'jupiter', 'neptune', 'mercury', 'venus', 'uranus']
 const PLANET_NAMES = {
   earth: '地球', saturn: '土星', moon: '月球',
-  star: '恒星', mars: '火星', jupiter: '木星', neptune: '海王星'
+  star: '恒星', mars: '火星', jupiter: '木星', neptune: '海王星',
+  mercury: '水星', venus: '金星', uranus: '天王星'
 }
 const PLANET_RING = {
   earth: false, saturn: true, moon: false,
-  star: false, mars: false, jupiter: false, neptune: false
+  star: false, mars: false, jupiter: false, neptune: false,
+  mercury: false, venus: false, uranus: false
 }
 // Text colors per planet — bright hues visible on both planet and dark space
 // With text outline, all colors are readable on any background
@@ -36,6 +38,9 @@ const PLANET_TEXT_COLORS = {
   mars:     { question: 'rgba(80,210,200,0.95)',  answer: 'rgba(110,225,215,0.95)' },
   jupiter:  { question: 'rgba(60,165,210,0.95)',  answer: 'rgba(90,180,225,0.95)' },
   neptune:  { question: 'rgba(255,230,195,0.96)', answer: 'rgba(255,220,180,0.96)' },
+  mercury:  { question: 'rgba(150,190,255,0.95)', answer: 'rgba(175,210,255,0.95)' },
+  venus:    { question: 'rgba(90,200,220,0.95)',  answer: 'rgba(120,215,235,0.95)' },
+  uranus:   { question: 'rgba(255,225,170,0.95)', answer: 'rgba(255,235,190,0.95)' },
 }
 
 // Read mode — planets hidden, auto-advance on card completion
@@ -247,7 +252,44 @@ function generateNeptuneTexture(w, h) {
 
 function drawContinent(ctx, cx, cy, rw, rh) { ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, Math.random() * 0.5, 0, Math.PI * 2); ctx.fill() }
 
+// ============================================================
+// 真实行星贴图（Solar System Scope，CC BY 4.0，solarsystemscope.com/textures）
+// 已压缩为 1024×512；贴图按类型共用，切勿在 disposePlanet 中销毁
+// 回退到程序化贴图：把 USE_REAL_PLANET_TEXTURES 改成 false 即可
+// ============================================================
+const USE_REAL_PLANET_TEXTURES = true
+const PLANET_TEXTURE_FILES = {
+  earth: 'planets/earth.jpg',
+  saturn: 'planets/saturn.jpg',
+  moon: 'planets/moon.jpg',
+  mars: 'planets/mars.jpg',
+  jupiter: 'planets/jupiter.jpg',
+  neptune: 'planets/neptune.jpg',
+  star: 'planets/star.jpg',
+  mercury: 'planets/mercury.jpg',
+  venus: 'planets/venus.jpg',
+  uranus: 'planets/uranus.jpg',
+}
+const SATURN_RING_FILE = 'planets/saturn_ring.png'
+let sharedTextureLoader = null
+const sharedTextureCache = {}
+
+function sharedTexture(relPath) {
+  if (sharedTextureCache[relPath]) return sharedTextureCache[relPath]
+  if (!sharedTextureLoader) sharedTextureLoader = new THREE.TextureLoader()
+  const tex = sharedTextureLoader.load(import.meta.env.BASE_URL + relPath)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.wrapS = THREE.RepeatWrapping
+  tex.anisotropy = 4
+  tex.userData.shared = true
+  sharedTextureCache[relPath] = tex
+  return tex
+}
+
 function createPlanetTexture(type) {
+  if (USE_REAL_PLANET_TEXTURES && PLANET_TEXTURE_FILES[type]) {
+    return sharedTexture(PLANET_TEXTURE_FILES[type])
+  }
   const SIZE = 1024; let c
   switch (type) {
     case 'earth': c = generateEarthTexture(SIZE, SIZE / 2); break
@@ -421,6 +463,31 @@ function groupIntoGalaxies() {
 
 function createPlanetRingMesh(type) {
   if (!PLANET_RING[type]) return null
+
+  // 真实环贴图：一张径向渐变条（u=内外半径），用 RingGeometry 按半径重写 UV
+  if (USE_REAL_PLANET_TEXTURES && type === 'saturn') {
+    const inner = 1.24, outer = 2.32
+    const geo = new THREE.RingGeometry(inner, outer, 160, 1)
+    const pos = geo.attributes.position
+    const uv = geo.attributes.uv
+    for (let i = 0; i < pos.count; i++) {
+      const r = Math.hypot(pos.getX(i), pos.getY(i))
+      uv.setXY(i, (r - inner) / (outer - inner), 0.5)
+    }
+    uv.needsUpdate = true
+    const mat = new THREE.MeshBasicMaterial({
+      map: sharedTexture(SATURN_RING_FILE),
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      opacity: 0.95,
+    })
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.rotation.x = Math.PI / 2 - 0.22
+    mesh.userData.texturedRing = true   // 环面已定型，不再做 rotation.z 晃动
+    return mesh
+  }
+
   const group = new THREE.Group()
   const makeTorus = (r, w, color, op, rot) => {
     const g = new THREE.TorusGeometry(r, w, 16, 120)
@@ -433,6 +500,71 @@ function createPlanetRingMesh(type) {
   return group
 }
 
+// ============================================================
+// 大气边缘辉光（Rayleigh/Mie 单次散射的视觉近似，参考 Maxime Heckel）
+// 菲涅尔边缘 × 日照朝向：朝阳侧亮、背阳侧淡出；附加混合不遮挡球面细节
+// 只给有大气层的行星，月球不加
+// ============================================================
+const ATMOSPHERE = {
+  earth:   { color: 0x5b9dff, strength: 1.00 },
+  saturn:  { color: 0xffe2a8, strength: 0.70 },
+  jupiter: { color: 0xffd2a1, strength: 0.75 },
+  neptune: { color: 0x6f93ff, strength: 1.00 },
+  mars:    { color: 0xff9a62, strength: 0.55 },
+  venus:   { color: 0xffd08a, strength: 0.55 },
+  uranus:  { color: 0x9fe0ea, strength: 0.40 },
+}
+const SUN_DIR = new THREE.Vector3(15, 8, 20).normalize()
+
+function createAtmosphereMesh(type) {
+  const cfg = ATMOSPHERE[type]
+  if (!cfg) return null
+
+  const geo = new THREE.SphereGeometry(1.16, 32, 24)
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color(cfg.color) },
+      uStrength: { value: cfg.strength },
+      uSun: { value: SUN_DIR },
+    },
+    vertexShader: `
+      varying vec3 vN;
+      varying vec3 vW;
+      void main() {
+        vN = normalize(mat3(modelMatrix) * normal);
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vW = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uStrength;
+      uniform vec3 uSun;
+      varying vec3 vN;
+      varying vec3 vW;
+      void main() {
+        vec3 V = normalize(cameraPosition - vW);
+        // 背面球壳：用 |dot| 取边缘环带；再乘一项让最外缘淡出，避免硬边
+        float d = abs(dot(normalize(vN), V));
+        float r = 1.0 - d;
+        float rim = r * r * (1.0 - r * r * r);
+        // 朝阳面散射更强，背阳侧几乎消失
+        float lit = clamp(dot(normalize(vN), uSun) * 0.5 + 0.5, 0.0, 1.0);
+        float a = rim * uStrength * (0.05 + 0.95 * lit * lit) * 0.5;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+  })
+  const mesh = new THREE.Mesh(geo, mat)
+  mesh.renderOrder = 1
+  return mesh
+}
+
 function createPlanetMesh(type) {
   const tex = createPlanetTexture(type)
   const geo = new THREE.SphereGeometry(1, 96, 96)
@@ -441,18 +573,158 @@ function createPlanetMesh(type) {
     return new THREE.Mesh(geo, mat)
   }
   const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.05 })
-  return new THREE.Mesh(geo, mat)
+  const mesh = new THREE.Mesh(geo, mat)
+  const atmo = createAtmosphereMesh(type)   // 作为子节点跟随缩放/位置，无需逐帧同步
+  if (atmo) mesh.add(atmo)
+  return mesh
+}
+
+// ============================================================
+// 主角星球高清贴图：屏幕同时只有一个放大的行星，其余背景只用 1K 缩略图
+// 因此 2K 只在主角阶段加载，退回轨道立即释放，显存峰值约 1×8MB
+// ============================================================
+const HERO_TEXTURE_FILES = {
+  earth: 'planets/2k/earth.jpg',
+  saturn: 'planets/2k/saturn.jpg',
+  moon: 'planets/2k/moon.jpg',
+  mars: 'planets/2k/mars.jpg',
+  jupiter: 'planets/2k/jupiter.jpg',
+  neptune: 'planets/2k/neptune.jpg',
+  star: 'planets/2k/star.jpg',
+  mercury: 'planets/2k/mercury.jpg',
+  venus: 'planets/2k/venus.jpg',
+  uranus: 'planets/2k/uranus.jpg',
+}
+// 4K 纯享模式（会员）：仅主角星球使用，单张显存约 32MB
+// 海王星没有 4K 源图，回落到 2K
+const HERO_TEXTURE_FILES_4K = {
+  earth: 'planets/4k/earth.jpg',
+  saturn: 'planets/4k/saturn.jpg',
+  moon: 'planets/4k/moon.jpg',
+  mars: 'planets/4k/mars.jpg',
+  jupiter: 'planets/4k/jupiter.jpg',
+  star: 'planets/4k/star.jpg',
+  mercury: 'planets/4k/mercury.jpg',
+  venus: 'planets/4k/venus.jpg',
+}
+let quality4k = false
+let heroTexGen = 0
+let heroTextureLoader = null
+
+function ensureHeroTexture(p) {
+  if (p.heroTex || p.heroLoading) return
+  const file = (quality4k ? (HERO_TEXTURE_FILES_4K[p.type] || HERO_TEXTURE_FILES[p.type]) : HERO_TEXTURE_FILES[p.type])
+  if (!file) return
+  if (!heroTextureLoader) heroTextureLoader = new THREE.TextureLoader()
+  const gen = heroTexGen
+  p.heroLoading = true
+  const tex = heroTextureLoader.load(import.meta.env.BASE_URL + file, () => {
+    p.heroLoading = false
+    // 分辨率已切换或加载完成前已退回轨道：直接丢弃
+    if (gen !== heroTexGen || p.state !== 'approach') { tex.dispose(); return }
+    p.heroTex = tex
+    p.mesh.material.map = tex
+    p.mesh.material.needsUpdate = true
+  })
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+}
+
+function releaseHeroTexture(p) {
+  if (!p.heroTex) return
+  p.mesh.material.map = p.thumbTex
+  p.mesh.material.needsUpdate = true
+  p.heroTex.dispose()
+  p.heroTex = null
+}
+
+// 4K 纯享模式：切换当前主角贴图的分辨率，并进入/退出全屏沉浸
+let immersiveHintTimer = null
+
+function showImmersiveHint() {
+  const el = document.getElementById('immersiveHint')
+  if (!el) return
+  el.classList.add('show')
+  clearTimeout(immersiveHintTimer)
+  immersiveHintTimer = setTimeout(() => el.classList.remove('show'), 4200)
+}
+
+function toggleQuality4K() {
+  quality4k = !quality4k
+  heroTexGen++
+  const btn = document.getElementById('qualityToggle')
+  if (btn) {
+    btn.classList.toggle('active', quality4k)
+    btn.title = quality4k ? '4K 纯享模式已开启（会员）' : '4K 纯享模式（会员）'
+  }
+  // 沉浸模式：隐藏 HUD/目录/模式/翻页弧视觉，仅保留 4K 标识
+  document.body.classList.toggle('immersive-4k', quality4k)
+  if (quality4k) showImmersiveHint()
+  else {
+    clearTimeout(immersiveHintTimer)
+    const hint = document.getElementById('immersiveHint')
+    if (hint) hint.classList.remove('show')
+  }
+  for (const p of allPlanets) {
+    if (p.heroTex || p.heroLoading) {
+      p.heroLoading = false
+      releaseHeroTexture(p)
+    }
+  }
 }
 
 function createGlowMesh(type) {
   if (type === 'star') {
-    const g = new THREE.SphereGeometry(1.5, 32, 32)
-    const m = new THREE.MeshBasicMaterial({ color: 0xffaa30, transparent: true, opacity: 0.28, depthWrite: false })
+    // 真实太阳贴图自带亮度，旧的橙色球壳在特写下会露出硬边圆盘，已停用
+    const g = new THREE.SphereGeometry(1.18, 32, 32)
+    const m = new THREE.MeshBasicMaterial({ color: 0xffaa30, transparent: true, opacity: 0, depthWrite: false })
     return new THREE.Mesh(g, m)
   }
+  // 行星的旧光晕已由真实大气边缘辉光接管，这里保留对象但不再绘制，
+  // 避免外层可见性/缩放逻辑改动（恒星仍保留自身日冕）
   const g = new THREE.SphereGeometry(1.15, 32, 32)
   const m = new THREE.MeshBasicMaterial({ color: 0x2244aa, transparent: true, opacity: 0.1, depthWrite: false })
+  m.visible = false
   return new THREE.Mesh(g, m)
+}
+
+// 不规则星云贴图：大量随机小光斑叠加，避免出现规整的圆形光晕
+function createNebulaTexture() {
+  const S = 512
+  const c = document.createElement('canvas')
+  c.width = c.height = S
+  const g = c.getContext('2d')
+  g.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 90; i++) {
+    // 横向分布：沿 X 拉长，Y 方向压缩，形成一条云带而不是圆团
+    const x = S / 2 + (Math.random() * 2 - 1) * S * 0.38
+    const y = S / 2 + (Math.random() * 2 - 1) * S * 0.10 + Math.sin(x / S * Math.PI * 2) * S * 0.04
+    const r = 16 + Math.random() * 62
+    const a = 0.025 + Math.random() * 0.06
+    const grd = g.createRadialGradient(x, y, 0, x, y, r)
+    grd.addColorStop(0, `rgba(255,255,255,${a})`)
+    grd.addColorStop(1, 'rgba(255,255,255,0)')
+    g.fillStyle = grd
+    g.beginPath()
+    g.arc(x, y, r, 0, Math.PI * 2)
+    g.fill()
+  }
+  // 收边：整体径向衰减，保证外缘完全透明，不出现方形/硬边
+  g.globalCompositeOperation = 'destination-in'
+  g.save()
+  g.translate(S / 2, S / 2)
+  g.scale(1, 0.34)              // 压扁成横向椭圆
+  const mask = g.createRadialGradient(0, 0, 0, 0, 0, S / 2)
+  mask.addColorStop(0, 'rgba(255,255,255,1)')
+  mask.addColorStop(0.55, 'rgba(255,255,255,0.7)')
+  mask.addColorStop(1, 'rgba(255,255,255,0)')
+  g.fillStyle = mask
+  g.fillRect(-S / 2, -S / 2, S, S)
+  g.restore()
+
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
 }
 
 function createGalaxyNebula(galaxyName) {
@@ -483,6 +755,24 @@ function createGalaxyNebula(galaxyName) {
   ptGeo.setAttribute('position', new THREE.BufferAttribute(ptPos, 3))
   const ptMat = new THREE.PointsMaterial({ color: 0x6688cc, size: 0.08, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })
   const pts = new THREE.Points(ptGeo, ptMat); group.add(pts)
+
+  // 彩色星云：不规则云团贴图叠加，颜色渐变过渡，不出现独立圆形光晕
+  const nebulaTex = createNebulaTexture()
+  const clouds = [
+    { color: 0x7f63ff, w: 18, h: 6.4, opacity: 0.17, x: 0.2, y: 0.2, z: -0.7, rot: 0 },
+    { color: 0xff5f86, w: 12, h: 4.4, opacity: 0.13, x: -2.4, y: -0.7, z: -0.5, rot: 0.1 },
+    { color: 0x3fd6d6, w: 8,  h: 3.0, opacity: 0.09, x: 2.8, y: 0.6, z: -0.2, rot: 0 },
+  ]
+  clouds.forEach((c) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: nebulaTex, color: c.color, blending: THREE.AdditiveBlending,
+      transparent: true, opacity: c.opacity, depthWrite: false,
+    }))
+    sp.scale.set(c.w, c.h, 1)
+    sp.material.rotation = c.rot
+    sp.position.set(c.x, c.y, c.z)
+    group.add(sp)
+  })
 
   group.position.set(0, 0, -28)
   return group
@@ -535,6 +825,7 @@ function createGalaxyPlanets(galaxy) {
 
     planets.push({
       mesh, glow, ring, card, type,
+      thumbTex: mesh.material.map,   // 背景缩略贴图（1K），主角时临时换成 2K
       textColors: PLANET_TEXT_COLORS[type],
       orbitX: x, orbitY: y, orbitZ: z,
       orbitAngle: angle, orbitRadius: radius,
@@ -571,17 +862,22 @@ function sweepScale(z, p) {
   return p.originScale + Math.pow(Math.max(t, 0), 1.6) * (p.scaleMult || 18)
 }
 
-function stagePlanet() {
+function stagePlanet(forceIdx = -1) {
   if (allPlanets.length === 0) return null
 
   // Pick an orbit planet (prefer sweep trajectory)
   let orbitIdx = -1
-  for (let i = 0; i < allPlanets.length; i++) {
-    const idx = (currentCardIdx + i) % allPlanets.length
-    const p = allPlanets[idx]
-    if (p.state !== 'orbit') continue
-    if (p.trajectoryType && p.trajectoryType.startsWith('sweep')) { orbitIdx = idx; break }
-    if (orbitIdx < 0) orbitIdx = idx
+  if (forceIdx >= 0 && allPlanets[forceIdx] &&
+      (allPlanets[forceIdx].state === 'orbit' || allPlanets[forceIdx].state === 'staging')) {
+    orbitIdx = forceIdx
+  } else {
+    for (let i = 0; i < allPlanets.length; i++) {
+      const idx = (currentCardIdx + i) % allPlanets.length
+      const p = allPlanets[idx]
+      if (p.state !== 'orbit') continue
+      if (p.trajectoryType && p.trajectoryType.startsWith('sweep')) { orbitIdx = idx; break }
+      if (orbitIdx < 0) orbitIdx = idx
+    }
   }
   if (orbitIdx < 0) return null
 
@@ -1201,6 +1497,9 @@ function setMode(target) {
     if (!shaderMode) enterShaderMode()
   }
   updateModeUI()
+  // 4K 纯享按钮只在星球模式出现（与 3D 档位同位置，互斥）
+  const qb = document.getElementById('qualityToggle')
+  if (qb) qb.classList.toggle('hidden', target !== 'planet')
 }
 
 function toggleModeMenu() {
@@ -1213,6 +1512,66 @@ function closeModeMenu() {
   document.getElementById('modeMenu').classList.remove('open')
 }
 
+// 主角星球立即退回背景轨道（复用自然退场时的复位逻辑）
+function resetPlanetToOrbit(p) {
+  p.state = 'orbit'
+  p.mesh.position.set(p.orbitX, p.orbitY, p.orbitZ)
+  p.mesh.scale.setScalar(p.originScale)
+  p.glow.position.copy(p.mesh.position)
+  p.glow.scale.setScalar(p.originScale * 1.2)
+  if (p.ring) {
+    p.ring.position.copy(p.mesh.position)
+    p.ring.scale.setScalar(p.originScale)
+  }
+  releaseHeroTexture(p)
+}
+
+// 手动翻页时立即换星球：跳过 10-20s 间隔与缓慢入场
+// 轮询群星：每点一次换下一颗，不会重复回到刚退场的那颗
+let planetCursor = 0
+
+function forceHeroForCurrentCard() {
+  if (allPlanets.length === 0) return
+  const prev = allPlanets.find(p => p.state === 'approach') || null
+  for (const p of allPlanets) {
+    if (p.state === 'approach') resetPlanetToOrbit(p)
+  }
+  stagedBackup = null
+  entranceGap = 0
+
+  let p = null
+  for (let k = 1; k <= allPlanets.length; k++) {
+    const idx = (planetCursor + k) % allPlanets.length
+    const cand = allPlanets[idx]
+    if (cand === prev) continue
+    // 巡游中的备用星球也可以直接上场
+    if (cand.state === 'orbit' || cand.state === 'staging') {
+      if (stagedBackup === cand) stagedBackup = null
+      planetCursor = idx
+      p = stagePlanet(idx)
+      break
+    }
+  }
+  // 只有一颗星球时，重新展示它自己
+  if (!p) p = stagePlanet(allPlanets.indexOf(prev))
+  if (!p) return
+  // 直接出现在画面中前方（中等尺寸，避免点击瞬间满屏压迫），随后照常向外漂移
+  p.mesh.position.set(0, 0, MAIN_Z - 15)
+  const sc = Math.min(sweepScale(p.mesh.position.z, p), p._maxScale || 12)
+  p.mesh.scale.setScalar(sc)
+  p.glow.position.copy(p.mesh.position)
+  p.glow.scale.setScalar(sc * 1.2)
+  if (p.ring) {
+    p.ring.position.copy(p.mesh.position)
+    p.ring.scale.setScalar(sc)
+  }
+  p.mesh.visible = true
+  p.glow.visible = true
+  if (p.ring) p.ring.visible = true
+  p.state = 'approach'
+  ensureHeroTexture(p)
+}
+
 // 手动翻页（底部左右圆弧热区）
 function goToCard(delta) {
   if (cards.length === 0) return
@@ -1223,6 +1582,9 @@ function goToCard(delta) {
     shaderAccum = 0
     shaderRingIdx = 0
     revealAllText()
+  } else if (quality4k && !readMode && !cloudMode) {
+    // 仅 4K 沉浸模式：左右点击轮询群星；普通模式只切换卡片，不动星球
+    forceHeroForCurrentCard()
   }
 }
 
@@ -1233,7 +1595,8 @@ function disposeObject3D(root) {
   root.traverse(o => {
     if (o.geometry) o.geometry.dispose()
     if (o.material) {
-      if (o.material.map) o.material.map.dispose()
+      // 真实行星贴图按类型共用，销毁单颗星球时不能释放
+      if (o.material.map && !o.material.map.userData?.shared) o.material.map.dispose()
       o.material.dispose()
     }
   })
@@ -1604,6 +1967,12 @@ async function init() {
     togglePlayPause()
   })
 
+  // 右下：4K 纯享模式（会员）
+  document.getElementById('qualityToggle').addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleQuality4K()
+  })
+
   // 右上：退出星空记忆 —— 仅首次进入提示，5 秒后自动收起
   const exitBtn = document.getElementById('exitStarfield')
   const EXIT_HINT_KEY = 'starfield_exit_hint_seen'
@@ -1651,6 +2020,23 @@ async function init() {
 // ============================================================
 // Background & lights
 // ============================================================
+// 圆形柔和星点贴图：避免 PointsMaterial 默认的方形像素块
+function createStarSprite() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const g = c.getContext('2d')
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grd.addColorStop(0, 'rgba(255,255,255,1)')
+  grd.addColorStop(0.28, 'rgba(255,255,255,0.78)')
+  grd.addColorStop(0.62, 'rgba(255,255,255,0.18)')
+  grd.addColorStop(1, 'rgba(255,255,255,0)')
+  g.fillStyle = grd
+  g.fillRect(0, 0, 64, 64)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+
 function createBgStars() {
   const geo = new THREE.BufferGeometry()
   const pos = new Float32Array(BG_STAR_COUNT * 3)
@@ -1658,7 +2044,7 @@ function createBgStars() {
     pos[i * 3] = (Math.random() - 0.5) * 120; pos[i * 3 + 1] = (Math.random() - 0.5) * 70; pos[i * 3 + 2] = (Math.random() - 0.5) * 100 - 20
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-  const mat = new THREE.PointsMaterial({ color: 0xccccff, size: 0.08, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })
+  const mat = new THREE.PointsMaterial({ color: 0xccccff, size: 0.09, map: createStarSprite(), alphaTest: 0.02, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })
   bgStars = new THREE.Points(geo, mat)
   scene.add(bgStars)
 }
@@ -1723,13 +2109,17 @@ function animate() {
   for (let i = 0; i < allPlanets.length; i++) {
     const p = allPlanets[i]
 
+    // 主角星球换 2K 高清贴图，退回背景立即释放回 1K 缩略图
+    if (p.state === 'approach') ensureHeroTexture(p)
+    else releaseHeroTexture(p)
+
     if (p.state === 'orbit') {
       // Background decoration — slow drift in deep space, dim and small
       p.orbitAngle += (0.0015 + Math.random() * 0.0005) * p.orbitDir
       p.mesh.position.x = Math.cos(p.orbitAngle) * p.orbitRadius
       p.mesh.position.y = Math.sin(p.orbitAngle) * p.orbitRadius * 0.45
       p.mesh.position.z = p.orbitZ + Math.sin(Date.now() * 0.0003 + i) * 1.5
-      p.mesh.rotation.y += 0.002
+      p.mesh.rotation.y += 0.0017
       p.glow.position.copy(p.mesh.position)
       if (p.ring) p.ring.position.copy(p.mesh.position)
     }
@@ -1783,8 +2173,12 @@ function animate() {
       if (p.ring) p.ring.scale.setScalar(sc)
       p.glow.position.copy(p.mesh.position)
       if (p.ring) p.ring.position.copy(p.mesh.position)
-      p.mesh.rotation.y += 0.003 + sc * 0.0003
-      if (p.ring) p.ring.rotation.z += 0.002
+      // 自转速度与视在尺寸成反比：特写时接近静止，远景时保持缓慢自转
+      // 屏幕上的像素流速 ∝ 角速度 × 半径，真实贴图细节多，大尺寸高速旋转会晕
+      // 放宽约一倍：远景约 7.6°/秒，特写约 3°/秒，仍随放大递减
+      const spin = Math.min(0.0022, Math.max(0.00022, 0.0025 / Math.max(sc, 0.2)))
+      p.mesh.rotation.y += spin
+      if (p.ring && !p.ring.userData.texturedRing) p.ring.rotation.z += 0.002
 
       // Exit check
       let past = false

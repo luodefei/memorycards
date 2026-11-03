@@ -95,16 +95,73 @@
 
             </androidx.cardview.widget.CardView>
 
-            <ImageButton
-                android:id="@+id/btnCrown"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_gravity="top|end"
+            <androidx.cardview.widget.CardView
+                android:id="@+id/researchCard"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone"
+                app:cardElevation="8dp"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="@color/card_research_bg">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:padding="24dp"
+                    android:paddingBottom="48dp">
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1">
+
+                        <TextView
+                            android:id="@+id/tvResearchContent"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="16sp"
+                            android:textColor="#333333"
+                            android:lineSpacingExtra="6dp"
+                            android:text="点击下方按钮，对这张卡片做深度研究" />
+
+                    </ScrollView>
+
+                    <Button
+                        android:id="@+id/btnResearch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="12dp"
+                        android:text="开始深度研究"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="@color/research_gold"
+                        android:textColor="@color/white" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:id="@+id/btnDeepResearch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
                 android:layout_margin="8dp"
                 android:padding="8dp"
+                android:translationZ="16dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="会员深度研究"
-                android:src="@drawable/ic_crown" />
+                android:drawableStart="@drawable/ic_crown"
+                android:drawablePadding="4dp"
+                android:gravity="center_vertical"
+                android:singleLine="true"
+                android:text="深度研究"
+                android:textColor="@color/research_gold"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
         </FrameLayout>
 

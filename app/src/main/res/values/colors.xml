@@ -12,4 +12,6 @@
     <color name="remember_btn">#FF43A047</color>
     <color name="selected_node_bg">#EDE7F6</color>
     <color name="selected_card_bg">#F3E5F5</color>
+    <color name="card_research_bg">#FFFFFDE7</color>
+    <color name="research_gold">#FFF57F17</color>
 </resources>

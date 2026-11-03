@@ -21,3 +21,8 @@ app:
   jwt:
     secret: ${JWT_SECRET:memorycards-local-dev-secret-key-please-change-in-prod}
     expiration-hours: ${JWT_EXPIRATION_HOURS:168}
+  research:
+    shim-url: ${RESEARCH_SHIM_URL:http://127.0.0.1:8318}
+    model: ${RESEARCH_MODEL:DeepSeek-V4-Flash}
+    max-tokens: ${RESEARCH_MAX_TOKENS:4096}
+    timeout-seconds: ${RESEARCH_TIMEOUT_SECONDS:120}

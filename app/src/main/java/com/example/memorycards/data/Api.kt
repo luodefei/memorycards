@@ -17,7 +17,8 @@ object Api {
     }
 
     fun request(context: Context, path: String, method: String = "GET", jsonBody: String? = null,
-                callback: Callback) {
+                callback: Callback,
+                connectTimeoutMs: Int = 8000, readTimeoutMs: Int = 8000) {
         Thread {
             var success = false
             var payload = ""
@@ -25,8 +26,8 @@ object Api {
             try {
                 val conn = URL(BASE_URL + path).openConnection() as HttpURLConnection
                 conn.requestMethod = method
-                conn.connectTimeout = 8000
-                conn.readTimeout = 8000
+                conn.connectTimeout = connectTimeoutMs
+                conn.readTimeout = readTimeoutMs
                 val token = Session.token(context)
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer $token")

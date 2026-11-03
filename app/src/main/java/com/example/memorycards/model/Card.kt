@@ -8,5 +8,6 @@ data class Card(
     val categoryPath: String = "",
     val box: Int = 1,
     val nextReview: Long = 0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val deepResearch: String = ""
 )
